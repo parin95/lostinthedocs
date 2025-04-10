@@ -47,7 +47,7 @@ But Swift’s ARC is instant. The moment the last strong reference goes away?
 
 Here’s a quick demo that made it all click:
 
-```swift
+````swift
 class Image {}
 
 class Cache {
@@ -68,14 +68,14 @@ func testCache() {
 }
 
 testCache()
-```
+````
 
 Output:
 
-```
+````
 Image assigned to cache
 Cached image: nil
-```
+````
 
 Even though I just assigned the image to the cache, it was immediately deallocated once img went out of scope — because the cache only held a weak reference.
 
