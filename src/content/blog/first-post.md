@@ -1,16 +1,103 @@
 ---
-title: 'First post'
-description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jul 08 2022'
-heroImage: '/blog-placeholder-3.jpg'
+title: '🗑️ Garbage Collection vs ARC'
+description: 'I thought I was being clever with weak references. Turns out, Swift had other plans.'
+pubDate: 'Apr 10 2025'
+heroImage: '/gc-arc-meme.png'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
+I was reading the [Swift ARC docs](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting#Weak-References) and came across this line:
 
-Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc. Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra massa massa ultricies mi.
+> In systems that use garbage collection, weak pointers are sometimes used to implement a simple caching mechanism [...] However, with ARC, values are deallocated as soon as their last strong reference is removed, making weak references unsuitable for such a purpose.
 
-Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
+I had to read it twice. Then a third time.
 
-Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id cursus metus aliquam eleifend mi.
+Wait… so weak references aren’t great for caching in Swift? Why not?
 
-Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
+Let’s rewind a bit.
+
+---
+
+### 🧠 What I thought I understood
+
+I knew that:
+
+* **Strong references** keep an object alive.
+* **Weak references** don’t.
+* Weak is useful to avoid retain cycles (hello, `[weak self]`).
+
+So I thought: *"If I store something in a cache using a weak reference, I’m not bloating memory, but I might still get a hit if no one’s deleted it yet. Nice."*
+
+That’s how it works in languages like Java or Python, which use Garbage Collection (GC). But Swift doesn’t use GC. It uses Automatic Reference Counting (ARC).
+
+And that difference matters a *lot*.
+
+---
+
+### 🚫 What actually happens in Swift
+
+In GC systems, objects stick around in memory even after the last strong reference is gone — until the garbage collector gets around to cleaning up. So if your cache holds a weak reference, there's a decent chance the object is still sitting in memory when you check.
+
+But Swift’s ARC is instant. The moment the last strong reference goes away?
+
+💥 Deallocated. Gone. Poof.
+
+---
+
+### 🧪 A tiny experiment
+
+Here’s a quick demo that made it all click:
+
+```swift
+class Image {}
+
+class Cache {
+    weak var image: Image?
+}
+
+func testCache() {
+    let cache = Cache()
+
+    do {
+        let img = Image()
+        cache.image = img // stored weakly
+        print("Image assigned to cache")
+    }
+
+    // img goes out of scope here
+    print("Cached image: \(String(describing: cache.image))") // nil
+}
+
+testCache()
+```
+
+Output:
+
+```
+Image assigned to cache
+Cached image: nil
+```
+
+Even though I just assigned the image to the cache, it was immediately deallocated once img went out of scope — because the cache only held a weak reference.
+
+So yeah, that cache? Basically empty unless something else keeps your object alive.
+
+---
+
+### 💡 Takeaways
+
+* Don’t use `weak` for caching in Swift.
+* If you want an actual cache, use **strong references** and **evict items yourself** when needed.
+* `NSCache` is a great option — it manages memory for you, works like a dictionary, and automatically purges under memory pressure.
+
+---
+
+### 🧭 Final Thought
+
+This was one of those “Wait... what?” moments for me. It looked familiar because of my past experience in other languages, but Swift’s memory model is just fundamentally different.
+
+And once I understood why it works that way, it made total sense.
+Just took me a minute (okay, a few hours) to get there.
+
+---
+
+*✏️ Got stuck on something else in the Swift book? You’re not alone. I’ll be back with another post soon. Probably about unowned, because… yeah.*

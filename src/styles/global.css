@@ -88,7 +88,7 @@ p {
 	margin-bottom: 1em;
 }
 .prose p {
-	margin-bottom: 2em;
+	margin-bottom: 1em;
 }
 textarea {
 	width: 100%;
@@ -121,7 +121,7 @@ blockquote {
 	border-left: 4px solid var(--accent);
 	padding: 0 0 0 20px;
 	margin: 0px;
-	font-size: 1.333em;
+	font-size: 1em;
 }
 hr {
 	border: none;
@@ -152,4 +152,17 @@ hr {
 	clip-path: inset(50%);
 	/* added line to stop words getting smushed together (as they go onto separate lines and some screen readers do not understand line feeds as a space */
 	white-space: nowrap;
+}
+
+.prose h3 {
+	margin: 1.5em 0 0.75em 0;
+}
+.prose pre {
+	line-height: 1em;
+}
+.prose pre > code {
+	font-size: 1rem;
+}
+.prose hr {
+	margin: 1.5em 0 0.75em 0;
 }
